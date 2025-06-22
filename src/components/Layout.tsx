@@ -26,13 +26,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, currentOrganization, signOut } = useAuth();
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Chart of Accounts', href: '/accounts', icon: FolderOpen },
-    { name: 'Banking', href: '/banking', icon: CreditCard },
-    { name: 'Invoicing', href: '/invoicing', icon: FileText },
-    { name: 'Expenses', href: '/expenses', icon: Receipt },
-    { name: 'Reports', href: '/reports', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Chart of Accounts', href: '/dashboard/accounts', icon: FolderOpen },
+    { name: 'Banking', href: '/dashboard/banking', icon: CreditCard },
+    { name: 'Invoicing', href: '/dashboard/invoicing', icon: FileText },
+    { name: 'Expenses', href: '/dashboard/expenses', icon: Receipt },
+    { name: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
+    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   ];
 
   const handleSignOut = async () => {
