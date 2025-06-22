@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Building2, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Building2, Mail, Lock, User, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 interface SignInForm {
@@ -19,15 +20,24 @@ export const AuthPage: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
 
   const signInForm = useForm<SignInForm>();
   const signUpForm = useForm<SignUpForm>();
+
+  // Redirect to dashboard if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSignIn = async (data: SignInForm) => {
     setLoading(true);
     try {
       await signIn(data.email, data.password);
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled in the auth context
     } finally {
@@ -44,6 +54,7 @@ export const AuthPage: React.FC = () => {
     setLoading(true);
     try {
       await signUp(data.email, data.password, data.organizationName);
+      navigate('/dashboard');
     } catch (error) {
       // Error is handled in the auth context
     } finally {
@@ -54,6 +65,17 @@ export const AuthPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
+        {/* Back to Home */}
+        <div className="mb-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Link>
+        </div>
+
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4">
