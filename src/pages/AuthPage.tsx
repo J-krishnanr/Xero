@@ -55,8 +55,18 @@ export const AuthPage: React.FC = () => {
     try {
       await signUp(data.email, data.password, data.organizationName);
       navigate('/dashboard');
-    } catch (error) {
-      // Error is handled in the auth context
+    } catch (error: any) {
+      // Check if the error is due to user already existing
+      if (error?.message?.includes('User already registered') || 
+          error?.body?.includes('user_already_exists')) {
+        // Switch to sign-in form and pre-fill email
+        setIsSignUp(false);
+        signInForm.setValue('email', data.email);
+        // Clear any existing errors
+        signInForm.clearErrors();
+        signUpForm.clearErrors();
+      }
+      // Other errors are handled in the auth context
     } finally {
       setLoading(false);
     }
