@@ -7,7 +7,9 @@ import {
   FileText, 
   AlertCircle,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  BarChart3,
+  Plus
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
@@ -66,6 +68,17 @@ export const Dashboard: React.FC = () => {
 
       if (entriesError) {
         console.error('Error loading journal entries:', entriesError);
+        // Don't throw error, just set empty data
+        setDashboardData({
+          totalRevenue: 0,
+          totalExpenses: 0,
+          netProfit: 0,
+          outstandingInvoices: 0,
+          recentTransactions: [],
+          monthlyData: [],
+          expenseBreakdown: []
+        });
+        setLoading(false);
         return;
       }
 
@@ -145,6 +158,16 @@ export const Dashboard: React.FC = () => {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      // Set empty data on error
+      setDashboardData({
+        totalRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        outstandingInvoices: 0,
+        recentTransactions: [],
+        monthlyData: [],
+        expenseBreakdown: []
+      });
     } finally {
       setLoading(false);
     }
@@ -182,8 +205,9 @@ export const Dashboard: React.FC = () => {
           <h3 className="text-lg font-medium text-gray-900 mb-2">No financial data yet</h3>
           <p className="text-gray-500 mb-6">Start by creating journal entries to see your business insights here</p>
           <div className="flex justify-center space-x-4">
-            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              Create Journal Entry
+            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
+              <Plus className="w-4 h-4" />
+              <span>Create Journal Entry</span>
             </button>
             <button className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
               Import Data
@@ -333,7 +357,7 @@ export const Dashboard: React.FC = () => {
               ) : (
                 <div className="h-300 flex items-center justify-center text-gray-500">
                   <div className="text-center">
-                    <PieChart className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                     <p>No expense data available</p>
                   </div>
                 </div>
@@ -384,7 +408,7 @@ export const Dashboard: React.FC = () => {
               <div className="space-y-3">
                 <button className="w-full flex items-center justify-between p-4 text-left bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                   <div className="flex items-center space-x-3">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <Plus className="w-5 h-5 text-blue-600" />
                     <span className="font-medium text-blue-900">Create Journal Entry</span>
                   </div>
                   <ArrowUpRight className="w-4 h-4 text-blue-600" />

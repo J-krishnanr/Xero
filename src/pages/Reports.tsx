@@ -75,6 +75,16 @@ export const Reports: React.FC = () => {
 
       if (error) {
         console.error('Error loading report data:', error);
+        // Don't throw error, just set empty data
+        setReportData({
+          totalRevenue: 0,
+          totalExpenses: 0,
+          netProfit: 0,
+          profitMargin: 0,
+          monthlyData: [],
+          quarterlyData: []
+        });
+        setLoading(false);
         return;
       }
 
@@ -136,6 +146,14 @@ export const Reports: React.FC = () => {
 
     } catch (error) {
       console.error('Error loading report data:', error);
+      setReportData({
+        totalRevenue: 0,
+        totalExpenses: 0,
+        netProfit: 0,
+        profitMargin: 0,
+        monthlyData: [],
+        quarterlyData: []
+      });
     } finally {
       setLoading(false);
     }

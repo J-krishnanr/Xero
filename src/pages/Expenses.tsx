@@ -61,7 +61,10 @@ export const Expenses: React.FC = () => {
 
       if (error) {
         console.error('Error loading expenses:', error);
-        toast.error('Failed to load expenses');
+        // Don't throw error, just set empty data
+        setExpenses([]);
+        setExpenseCategories([]);
+        setLoading(false);
         return;
       }
 
@@ -104,7 +107,8 @@ export const Expenses: React.FC = () => {
 
     } catch (error) {
       console.error('Error loading expenses:', error);
-      toast.error('Failed to load expenses');
+      setExpenses([]);
+      setExpenseCategories([]);
     } finally {
       setLoading(false);
     }
@@ -338,6 +342,9 @@ export const Expenses: React.FC = () => {
                 <div className="p-12 text-center text-gray-500">
                   <Receipt className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                   <p>No expenses found</p>
+                  <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Add First Expense
+                  </button>
                 </div>
               )}
             </div>

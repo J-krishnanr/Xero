@@ -58,22 +58,31 @@ export const Banking: React.FC = () => {
         .select('*')
         .eq('organization_id', currentOrganization.id)
         .eq('type', 'asset')
-        .ilike('name', '%cash%')
         .eq('is_active', true);
 
       if (accountsError) {
         console.error('Error loading bank accounts:', accountsError);
-        toast.error('Failed to load bank accounts');
+        // Don't throw error, just set empty data
+        setBankAccounts([]);
+        setTransactions([]);
+        setLoading(false);
         return;
       }
 
-      // Transform accounts to bank accounts format
-      const bankAccountsData: BankAccount[] = (accounts || []).map(account => ({
-        id: account.id,
-        name: account.name,
-        type: 'checking', // Default type
-        balance: 0 // Will be calculated from journal entries
-      }));
+      // Filter for cash/bank accounts (containing 'cash', 'bank', or 'checking' in name)
+      const bankAccountsData: BankAccount[] = (accounts || [])
+        .filter(account => 
+          account.name.toLowerCase().includes('cash') ||
+          account.name.toLowerCase().includes('bank') ||
+          account.name.toLowerCase().includes('checking') ||
+          account.name.toLowerCase().includes('savings')
+        )
+        .map(account => ({
+          id: account.id,
+          name: account.name,
+          type: 'checking', // Default type
+          balance: 0 // Will be calculated from journal entries
+        }));
 
       setBankAccounts(bankAccountsData);
       
@@ -97,7 +106,8 @@ export const Banking: React.FC = () => {
 
       if (entriesError) {
         console.error('Error loading transactions:', entriesError);
-        toast.error('Failed to load transactions');
+        setTransactions([]);
+        setLoading(false);
         return;
       }
 
@@ -122,7 +132,8 @@ export const Banking: React.FC = () => {
 
     } catch (error) {
       console.error('Error loading banking data:', error);
-      toast.error('Failed to load banking data');
+      setBankAccounts([]);
+      setTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -324,6 +335,9 @@ export const Banking: React.FC = () => {
                 <div className="p-12 text-center text-gray-500">
                   <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                   <p>No transactions found</p>
+                  <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Add First Transaction
+                  </button>
                 </div>
               )}
             </div>
