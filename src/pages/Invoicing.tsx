@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Plus, 
@@ -12,54 +12,18 @@ import {
   AlertCircle,
   DollarSign
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
-const invoices = [
-  { 
-    id: 'INV-2024-001', 
-    client: 'ABC Corporation', 
-    amount: 5800, 
-    status: 'paid', 
-    dueDate: '2024-01-30',
-    issueDate: '2024-01-15',
-    description: 'Web Development Services'
-  },
-  { 
-    id: 'INV-2024-002', 
-    client: 'XYZ Services', 
-    amount: 3200, 
-    status: 'sent', 
-    dueDate: '2024-02-05',
-    issueDate: '2024-01-20',
-    description: 'Consulting Services'
-  },
-  { 
-    id: 'INV-2024-003', 
-    client: 'DEF Limited', 
-    amount: 1500, 
-    status: 'overdue', 
-    dueDate: '2024-01-10',
-    issueDate: '2024-01-01',
-    description: 'Design Services'
-  },
-  { 
-    id: 'INV-2024-004', 
-    client: 'GHI Enterprises', 
-    amount: 2750, 
-    status: 'draft', 
-    dueDate: '2024-02-15',
-    issueDate: '2024-01-25',
-    description: 'Marketing Campaign'
-  },
-  { 
-    id: 'INV-2024-005', 
-    client: 'JKL Company', 
-    amount: 4200, 
-    status: 'sent', 
-    dueDate: '2024-02-10',
-    issueDate: '2024-01-26',
-    description: 'Software Development'
-  },
-];
+interface Invoice {
+  id: string;
+  client: string;
+  amount: number;
+  status: 'paid' | 'sent' | 'overdue' | 'draft';
+  dueDate: string;
+  issueDate: string;
+  description: string;
+}
 
 const getStatusIcon = (status: string) => {
   switch (status) {
@@ -82,8 +46,34 @@ const getStatusColor = (status: string) => {
 };
 
 export const Invoicing: React.FC = () => {
+  const { currentOrganization } = useAuth();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    if (currentOrganization) {
+      loadInvoices();
+    }
+  }, [currentOrganization]);
+
+  const loadInvoices = async () => {
+    if (!currentOrganization) return;
+
+    try {
+      setLoading(true);
+
+      // For now, we'll show a placeholder since invoices table doesn't exist yet
+      // In a real implementation, you would load from an invoices table
+      setInvoices([]);
+
+    } catch (error) {
+      console.error('Error loading invoices:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,6 +85,14 @@ export const Invoicing: React.FC = () => {
   const totalPaid = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0);
   const totalOutstanding = invoices.filter(inv => inv.status !== 'paid').reduce((sum, inv) => sum + inv.amount, 0);
   const overdueCount = invoices.filter(inv => inv.status === 'overdue').length;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -192,64 +190,75 @@ export const Invoicing: React.FC = () => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredInvoices.map((invoice) => (
-                <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{invoice.id}</div>
-                      <div className="text-sm text-gray-500">{invoice.description}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{invoice.client}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">${invoice.amount.toLocaleString()}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center space-x-2">
-                      {getStatusIcon(invoice.status)}
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{invoice.dueDate}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <Download className="w-4 h-4" />
-                      </button>
-                      {invoice.status === 'draft' && (
-                        <button className="text-blue-600 hover:text-blue-700">
-                          <Send className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        {invoices.length === 0 ? (
+          <div className="p-12 text-center">
+            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No invoices yet</h3>
+            <p className="text-gray-500 mb-6">Create your first invoice to start tracking payments</p>
+            <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              Create First Invoice
+            </button>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredInvoices.map((invoice) => (
+                  <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{invoice.id}</div>
+                        <div className="text-sm text-gray-500">{invoice.description}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{invoice.client}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">${invoice.amount.toLocaleString()}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(invoice.status)}
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(invoice.status)}`}>
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{invoice.dueDate}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button className="text-gray-400 hover:text-gray-600">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        {invoice.status === 'draft' && (
+                          <button className="text-blue-600 hover:text-blue-700">
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
