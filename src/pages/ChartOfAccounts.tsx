@@ -10,7 +10,10 @@ import {
   CreditCard,
   TrendingUp,
   TrendingDown,
-  DollarSign
+  DollarSign,
+  Save,
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -24,6 +27,13 @@ interface Account {
   parent_account_id: string | null;
   is_active: boolean;
   children?: Account[];
+}
+
+interface NewAccount {
+  code: string;
+  name: string;
+  type: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+  parent_account_id: string | null;
 }
 
 const accountTypeIcons = {
@@ -49,6 +59,13 @@ export const ChartOfAccounts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [newAccount, setNewAccount] = useState<NewAccount>({
+    code: '',
+    name: '',
+    type: 'asset',
+    parent_account_id: null,
+  });
 
   useEffect(() => {
     if (currentOrganization) {
@@ -60,30 +77,37 @@ export const ChartOfAccounts: React.FC = () => {
     if (!currentOrganization) return;
 
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('accounts')
         .select('*')
         .eq('organization_id', currentOrganization.id)
         .order('code');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading accounts:', error);
+        toast.error('Failed to load accounts');
+        return;
+      }
 
       // Build hierarchical structure
       const accountMap = new Map<string, Account>();
       const rootAccounts: Account[] = [];
 
       // First pass: create all accounts
-      data.forEach(account => {
+      (data || []).forEach(account => {
         accountMap.set(account.id, { ...account, children: [] });
       });
 
       // Second pass: build hierarchy
-      data.forEach(account => {
+      (data || []).forEach(account => {
         const accountObj = accountMap.get(account.id)!;
         if (account.parent_account_id) {
           const parent = accountMap.get(account.parent_account_id);
           if (parent) {
             parent.children!.push(accountObj);
+          } else {
+            rootAccounts.push(accountObj);
           }
         } else {
           rootAccounts.push(accountObj);
@@ -92,8 +116,8 @@ export const ChartOfAccounts: React.FC = () => {
 
       setAccounts(rootAccounts);
     } catch (error: any) {
-      toast.error('Failed to load accounts');
       console.error('Error loading accounts:', error);
+      toast.error('Failed to load accounts');
     } finally {
       setLoading(false);
     }
@@ -131,6 +155,7 @@ export const ChartOfAccounts: React.FC = () => {
     ];
 
     try {
+      setLoading(true);
       const { error } = await supabase
         .from('accounts')
         .insert(
@@ -140,13 +165,81 @@ export const ChartOfAccounts: React.FC = () => {
           }))
         );
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating accounts:', error);
+        toast.error('Failed to create default accounts');
+        return;
+      }
 
       toast.success('Default chart of accounts created!');
-      loadAccounts();
+      await loadAccounts();
     } catch (error: any) {
-      toast.error('Failed to create default accounts');
       console.error('Error creating accounts:', error);
+      toast.error('Failed to create default accounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddAccount = async () => {
+    if (!currentOrganization || !newAccount.code || !newAccount.name) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .insert({
+          ...newAccount,
+          organization_id: currentOrganization.id,
+        });
+
+      if (error) {
+        console.error('Error adding account:', error);
+        if (error.code === '23505') {
+          toast.error('Account code already exists');
+        } else {
+          toast.error('Failed to add account');
+        }
+        return;
+      }
+
+      toast.success('Account added successfully!');
+      setShowAddModal(false);
+      setNewAccount({
+        code: '',
+        name: '',
+        type: 'asset',
+        parent_account_id: null,
+      });
+      await loadAccounts();
+    } catch (error: any) {
+      console.error('Error adding account:', error);
+      toast.error('Failed to add account');
+    }
+  };
+
+  const handleDeleteAccount = async (accountId: string) => {
+    if (!confirm('Are you sure you want to delete this account?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('accounts')
+        .delete()
+        .eq('id', accountId);
+
+      if (error) {
+        console.error('Error deleting account:', error);
+        toast.error('Failed to delete account');
+        return;
+      }
+
+      toast.success('Account deleted successfully!');
+      await loadAccounts();
+    } catch (error: any) {
+      console.error('Error deleting account:', error);
+      toast.error('Failed to delete account');
     }
   };
 
@@ -190,10 +283,16 @@ export const ChartOfAccounts: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+            <button 
+              onClick={() => setEditingAccount(account)}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            >
               <Edit3 className="w-4 h-4" />
             </button>
-            <button className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50">
+            <button 
+              onClick={() => handleDeleteAccount(account.id)}
+              className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+            >
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -307,6 +406,77 @@ export const ChartOfAccounts: React.FC = () => {
           {/* Accounts List */}
           <div className="divide-y divide-gray-200">
             {filteredAccounts.map(account => renderAccount(account))}
+          </div>
+        </div>
+      )}
+
+      {/* Add Account Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Add New Account</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Code</label>
+                <input
+                  type="text"
+                  value={newAccount.code}
+                  onChange={(e) => setNewAccount(prev => ({ ...prev, code: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., 1000"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Name</label>
+                <input
+                  type="text"
+                  value={newAccount.name}
+                  onChange={(e) => setNewAccount(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Cash and Cash Equivalents"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Account Type</label>
+                <select
+                  value={newAccount.type}
+                  onChange={(e) => setNewAccount(prev => ({ ...prev, type: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="asset">Asset</option>
+                  <option value="liability">Liability</option>
+                  <option value="equity">Equity</option>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddAccount}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Account
+              </button>
+            </div>
           </div>
         </div>
       )}

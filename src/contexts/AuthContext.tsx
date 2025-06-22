@@ -46,6 +46,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
 
         if (session?.user && !currentOrganization) {
+          // First, ensure user exists in users table
+          await ensureUserExists(session.user);
+          
           // Load user's organizations
           const { data: userOrgs } = await supabase
             .from('user_organizations')
@@ -70,6 +73,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, [currentOrganization]);
+
+  const ensureUserExists = async (user: User) => {
+    try {
+      // Check if user exists in users table
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (!existingUser) {
+        // Create user record
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+          });
+
+        if (error && error.code !== '23505') { // Ignore duplicate key errors
+          console.error('Error creating user record:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring user exists:', error);
+    }
+  };
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -97,6 +127,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (data.user) {
+      // Ensure user record exists
+      await ensureUserExists(data.user);
+
       // Create organization
       const { data: org, error: orgError } = await supabase
         .from('organizations')
